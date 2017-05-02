@@ -65,6 +65,7 @@ class Fitter(object):
     """Fit transient events with the provided model."""
 
     _MAX_ACORC = 5
+    _REPLACE_AGE = 20
 
     def __init__(self):
         """Initialize `Fitter`."""
@@ -631,6 +632,7 @@ class Fitter(object):
                           filts._average_wavelengths[bis[i]],
                           filts._band_offsets[bis[i]],
                           filts._band_kinds[bis[i]],
+                          filts._band_names[bis[i]],
                           ois[i], bis[i])
                          for i in range(len(bis))]
             filterrows = [(
@@ -642,7 +644,7 @@ class Fitter(object):
                             'System: ' + s[0] if s[0] else '',
                             'AB offset: ' + pretty_num(
                                 s[3]) if (s[4] == 'magnitude' and
-                                          s[3] > 0) else '')))) +
+                                          s[0] != 'AB') else '')))) +
                 ']').replace(' []', '') for s in list(sorted(filterarr))]
             if not all(ois):
                 filterrows.append('  (* = Not observed in this band)')
@@ -730,7 +732,7 @@ class Fitter(object):
         lnlike = None
         pool_size = max(pool.size, 1)
         # Derived so only half a walker redrawn with Gaussian distribution.
-        redraw_mult = 1.0 * np.sqrt(
+        redraw_mult = 0.5 * np.sqrt(
             2) * scipy.special.erfinv(float(nwalkers - 1) / nwalkers)
 
         prt.message('nmeas_nfree', [model._num_measurements, ndim])
@@ -773,7 +775,7 @@ class Fitter(object):
                     p0[i].append(p)
                     dwscores.append(score)
                 else:
-                    nmap = nwalkers - len(p0[i])
+                    nmap = min(nwalkers - len(p0[i]), max(pool.size, 10))
                     dws = pool.map(draw_walker, [test_walker] * nmap)
                     p0[i].extend([x[0] for x in dws])
                     dwscores.extend([x[1] for x in dws])
@@ -795,6 +797,8 @@ class Fitter(object):
         kmat = None
         all_chain = np.array([])
         scores = np.ones((ntemps, nwalkers)) * -np.inf
+        ages = np.zeros((ntemps, nwalkers), dtype=int)
+        oldp = p
 
         max_chunk = 1000
         kmat_chunk = 5
@@ -841,6 +845,15 @@ class Fitter(object):
                     emim1 = emi - 1
                     messages = []
 
+                    # Increment the age of each walker if their positions are
+                    # unchanged.
+                    for ti in range(ntemps):
+                        for wi in range(nwalkers):
+                            if np.array_equal(p[ti][wi], oldp[ti][wi]):
+                                ages[ti][wi] += 1
+                            else:
+                                ages[ti][wi] = 0
+
                     # Record then reset sampler proposal/acceptance counts.
                     accepts = list(
                         np.mean(sampler.nprop_accepted / sampler.nprop,
@@ -851,8 +864,10 @@ class Fitter(object):
                         (sampler.ntemps, sampler.nwalkers),
                         dtype=np.float)
 
-                    # First, redraw any walkers with scores significantly
-                    # worse than their peers (only during burn-in).
+                    # During burn-in only, redraw any walkers with scores
+                    # significantly worse than their peers, or those that are
+                    # stale (i.e. remained in the same position for a long
+                    # time).
                     if emim1 <= self._burn_in:
                         pmedian = [np.median(x) for x in lnprob]
                         pmead = [np.mean([abs(y - pmedian) for y in x])
@@ -864,7 +879,8 @@ class Fitter(object):
                                 if (wprob <= pmedian[ti] -
                                     max(redraw_mult * pmead[ti],
                                         float(nwalkers)) or
-                                        np.isnan(wprob)):
+                                        np.isnan(wprob) or
+                                        ages[ti][wi] >= self._REPLACE_AGE):
                                     redraw_count = redraw_count + 1
                                     dxx = np.random.normal(
                                         scale=0.01, size=ndim)
@@ -885,6 +901,8 @@ class Fitter(object):
                                 '{:.0%} redraw, {}/{} success'.format(
                                     redraw_count / (nwalkers * ntemps),
                                     redraw_count - bad_redraws, redraw_count))
+
+                    oldp = p.copy()
 
                     # Calculate the autocorrelation time.
                     low = 10
@@ -1079,14 +1097,14 @@ class Fitter(object):
                 ici = ici + 1
 
         except (KeyboardInterrupt, SystemExit):
-            prt.message('ctrl_c', error=True, prefix=False)
+            prt.message('ctrl_c', error=True, prefix=False, color='!r')
             s_exception = sys.exc_info()
         except Exception:
             raise
 
         if s_exception:
             pool.close()
-            if (not prt.prompt('mc_interrupted', self._wrap_length)):
+            if (not prt.prompt('mc_interrupted')):
                 sys.exit()
 
         if write:
