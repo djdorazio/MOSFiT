@@ -877,5 +877,64 @@
                 "yunit": "cm2"
             }
         }
+    },
+    {
+        "systems": [
+            "",
+            "Vega"
+        ],
+        "telescopes": [
+            "",
+            "WISE"
+        ],
+        "instrument": [
+            "",
+            "WISE"
+        ],
+        "filters": {
+            "W1": {
+                "SVO": "WISE/WISE.W1"
+            },
+            "W2": {
+                "SVO": "WISE/WISE.W2"
+            },
+            "W3": {
+                "SVO": "WISE/WISE.W3"
+            },
+            "W4": {
+                "SVO": "WISE/WISE.W4"
+            }
+        }
+    },
+    {
+        "systems": [
+            "AB"
+        ],
+        "telescopes": [
+            "",
+            "WISE"
+        ],
+        "instrument": [
+            "",
+            "WISE"
+        ],
+        "filters": {
+            "W1": {
+                "SVO": "WISE/WISE.W1",
+                "offset": 0.0
+            },
+            "W2": {
+                "SVO": "WISE/WISE.W2",
+                "offset": 0.0
+            },
+            "W3": {
+                "SVO": "WISE/WISE.W3",
+                "offset": 0.0
+            },
+            "W4": {
+                "SVO": "WISE/WISE.W4",
+                "offset": 0.0
+            }
+        }
     }
 ]
