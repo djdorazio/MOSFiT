@@ -1,0 +1,182 @@
+{
+    "graticule":{
+        "kind":"array"
+    },
+    "ebv":{
+        "kind":"parameter",
+        "value":0.0,
+        "class":"parameter",
+        "inputs":[
+            "transient"
+        ],
+        "latex":"E({\\rm B} - {\\rm V})"
+    },
+    "nhhost":{
+        "kind":"parameter",
+        "value":1.0e18,
+        "class":"parameter",
+        "latex":"n_{\\rm H,host}",
+        "derived_keys":"avhost"
+    },
+    "texplosion":{
+        "kind":"parameter",
+        "value":0.0,
+        "class":"parameter",
+        "latex":"t_{\\rm exp}\\,{\\rm (days)}",
+        "requests":{
+            "min_times": "transient"
+        }
+    },
+    "Pspin":{
+        "kind":"parameter",
+        "value":2.0,
+        "class":"parameter",
+        "latex":"P_{\\rm spin}\\,{\\rm (ms)}"
+    },
+    "Bfield":{
+        "kind":"parameter",
+        "value":1.0,
+        "class":"parameter",
+        "latex":"B"
+    },
+    "Mns":{
+        "kind":"parameter",
+        "value":2.0,
+        "class":"parameter",
+        "latex":"M_{\\rm NS}\\,(M_\\odot)"
+    },
+    "thetaPB":{
+        "kind":"parameter",
+        "value":0.785398163,
+        "class":"parameter",
+        "latex":"\\theta_{\\rm PB}"
+    },
+    "kappa":{
+        "kind":"parameter",
+        "value":0.2,
+        "class":"parameter",
+        "latex":"\\kappa\\,({\\rm cm}^{2}\\,{\\rm g}^{-1})"
+    },
+    "kappagamma":{
+        "kind":"parameter",
+        "value":10.0,
+        "class":"parameter",
+        "latex":"\\kappa_\\gamma\\,({\\rm cm}^{2}\\,{\\rm g}^{-1})"
+    },
+    "mejecta":{
+        "kind":"parameter",
+        "value":1.0,
+        "class":"parameter",
+        "latex":"M_{\\rm ej}\\,(M_\\odot)"
+    },
+    "vejecta":{
+        "kind":"parameter",
+        "value":1.0e4,
+        "class":"parameter",
+        "latex":"v_{\\rm ej}\\,({\\rm km\\,s}^{-1})"
+    },
+    "temperature":{
+        "kind":"parameter",
+        "value":5.0e3,
+        "class":"parameter",
+        "latex":"T_{\\min}\\,{\\rm (K)}"
+    },
+    "cutoff_wavelength":{
+        "kind":"parameter",
+        "value":3000.0,
+        "class":"parameter",
+        "latex":"\\lambda_{\\rm cutoff}"
+    },
+    "neutrino_energy":{
+        "kind":"parameter",
+        "value":1.0e51,
+        "class":"parameter",
+        "latex":"E_{\\nu}"
+    },
+    "tnebular_min":{
+        "kind":"parameter",
+        "value":100.0,
+        "class":"parameter",
+        "latex":"t_{\\rm neb}"
+    },
+    "magnetar":{
+        "kind":"engine",
+        "inputs":[
+            "densetimes",
+            "mejecta",
+            "Pspin",
+            "Bfield",
+            "Mns",
+            "thetaPB",
+            "texplosion"
+        ]
+    },
+    "tdust":{
+        "kind":"photosphere",
+        "inputs":[
+            "texplosion",
+            "magnetar",
+            "graticule",
+            "radius_inner",
+            "grain_size",
+            "moreparametersheredanplease"
+        ]
+    },
+    "retarded_time":{
+        "kind":"transform",
+        "inputs":[
+            "graticule",
+            "grainsize",
+            "texplosion",
+            "radius_inner"
+        ]
+    },
+    "multiblackbody":{
+        "kind":"sed",
+        "inputs":[
+            "retarded_time",
+            "graticule",
+            "redshift",
+            "tdust",
+            "moreparametersheredanplease"
+        ],
+        "requests":{
+            "band_wave_ranges": "photometry"
+        }
+    },
+    "losextinction":{
+        "kind":"sed",
+        "inputs":[
+            "multiblackbody",
+            "nhhost",
+            "rvhost",
+            "ebv"
+        ],
+        "requests":{
+            "band_wave_ranges": "photometry"
+        }
+    },
+    "photometry":{
+        "kind":"observable",
+        "inputs":[
+            "losextinction",
+            "lumdist"
+        ]
+    },
+    "likelihood":{
+        "kind":"objective",
+        "inputs":[
+            "transient",
+            "variance",
+            "codeltatime",
+            "codeltalambda",
+            "photometry",
+            "default_upper_limit_error",
+            "default_no_error_bar_error"
+        ],
+        "requests":{
+            "average_wavelengths": "photometry",
+            "variance_bands": "photometry"
+        }
+    }
+}
